@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const handler = createMcpHandler(
   async (server) => {
-    // Existing tool
+    // --- Existing echo tool ---
     server.tool(
       "echo",
       "description",
@@ -15,50 +15,37 @@ const handler = createMcpHandler(
       })
     );
 
-    // New Cheer Pal tool with working media
+    // --- New Cheer Pal tool: get_media (safe TEXT response) ---
     server.tool(
       "get_media",
-      "Returns sample cheer practice media links.",
+      "Returns sample media info as plain text links.",
       {
         role: z.string(),
         age_band: z.string(),
         topic: z.string(),
       },
-      async ({ role, age_band, topic }) => {
-        return {
-          content: [{
-            type: "json",
-            json: {
-              items: [
-                {
-                  id: "vid_toe_touch_slowmo",
-                  type: "video",
-                  title: "Toe Touch Drill (Slow-Mo)",
-                  url: "https://filesamples.com/samples/video/mp4/sample_640x360.mp4",
-                  thumbnail: "https://via.placeholder.com/320x180.png?text=Toe+Touch+Drill",
-                  duration_sec: 15
-                },
-                {
-                  id: "pdf_toe_touch_checklist",
-                  type: "pdf",
-                  title: "Toe Touch Checklist",
-                  url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-                }
-              ]
-            }
-          }]
-        };
-      }
+      async ({ role, age_band, topic }) => ({
+        content: [
+          {
+            type: "text",
+            text:
+              `Media for role=${role}, age_band=${age_band}, topic=${topic}\n\n` +
+              `Video: https://filesamples.com/samples/video/mp4/sample_640x360.mp4\n` +
+              `PDF:   https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`,
+          },
+        ],
+      })
     );
   },
   {
+    // Capabilities tell clients which tools exist
     capabilities: {
       tools: {
         echo: {
           description: "Echo a message",
         },
         get_media: {
-          description: "Returns sample cheer practice media links.",
+          description: "Returns sample media info as plain text links.",
         },
       },
     },
@@ -71,4 +58,5 @@ const handler = createMcpHandler(
 );
 
 export { handler as GET, handler as POST, handler as DELETE };
+
 

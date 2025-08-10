@@ -15,7 +15,7 @@ const handler = createMcpHandler(
       })
     );
 
-    // New Cheer Pal tool
+    // New Cheer Pal tool with working media
     server.tool(
       "get_media",
       "Returns sample cheer practice media links.",
@@ -31,18 +31,18 @@ const handler = createMcpHandler(
             json: {
               items: [
                 {
-                  id: "vid_sample_01",
+                  id: "vid_toe_touch_slowmo",
                   type: "video",
-                  title: "Sample Toe Touch Drill",
-                  url: "https://example.com/videos/toe_touch.mp4",
-                  thumbnail: "https://example.com/images/toe_touch_thumb.jpg",
+                  title: "Toe Touch Drill (Slow-Mo)",
+                  url: "https://filesamples.com/samples/video/mp4/sample_640x360.mp4",
+                  thumbnail: "https://via.placeholder.com/320x180.png?text=Toe+Touch+Drill",
                   duration_sec: 15
                 },
                 {
-                  id: "pdf_sample_01",
+                  id: "pdf_toe_touch_checklist",
                   type: "pdf",
                   title: "Toe Touch Checklist",
-                  url: "https://example.com/docs/toe_touch_checklist.pdf"
+                  url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
                 }
               ]
             }
@@ -71,3 +71,4 @@ const handler = createMcpHandler(
 );
 
 export { handler as GET, handler as POST, handler as DELETE };
+

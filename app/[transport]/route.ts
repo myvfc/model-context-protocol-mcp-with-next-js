@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const handler = createMcpHandler(
   async (server) => {
-    // --- Existing echo tool ---
+    // --- Built-in echo tool ---
     server.tool(
       "echo",
       "description",
@@ -15,7 +15,7 @@ const handler = createMcpHandler(
       })
     );
 
-    // --- New Cheer Pal tool: get_media (safe TEXT response) ---
+    // --- Cheer Pal tool: get_media (returns plain TEXT links; safe for mcp-handler) ---
     server.tool(
       "get_media",
       "Returns sample media info as plain text links.",
@@ -38,15 +38,11 @@ const handler = createMcpHandler(
     );
   },
   {
-    // Capabilities tell clients which tools exist
+    // Declare tools so clients can "discover" them
     capabilities: {
       tools: {
-        echo: {
-          description: "Echo a message",
-        },
-        get_media: {
-          description: "Returns sample media info as plain text links.",
-        },
+        echo: { description: "Echo a message" },
+        get_media: { description: "Returns sample media info as plain text links." },
       },
     },
   },

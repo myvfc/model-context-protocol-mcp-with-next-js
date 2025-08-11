@@ -1,7 +1,7 @@
 // app/[transport]/route.ts
 // Self-contained MCP-style route for Cheer Pal on Vercel (no external imports)
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 type Tool = {
   name: string;
@@ -304,7 +304,7 @@ export async function GET() {
       }))
     };
 
-    return NextResponse.json(response, { 
+    return new Response(JSON.stringify(response), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -314,9 +314,9 @@ export async function GET() {
       }
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to retrieve tools list" },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: "Failed to retrieve tools list" }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
@@ -341,9 +341,9 @@ export async function POST(req: NextRequest) {
     try { 
       body = await req.json(); 
     } catch (parseError) {
-      return NextResponse.json(
-        { error: "Invalid JSON in request body" },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -351,26 +351,26 @@ export async function POST(req: NextRequest) {
     const input = body?.input ?? {};
 
     if (!toolName || typeof toolName !== 'string') {
-      return NextResponse.json(
-        { error: "Missing or invalid 'tool' field in request body" },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid 'tool' field in request body" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const foundTool = tools.find(t => t.name === toolName);
     if (!foundTool) {
-      return NextResponse.json(
-        { 
+      return new Response(
+        JSON.stringify({ 
           error: `Tool not found: ${toolName}`,
           available_tools: tools.map(t => t.name)
-        },
-        { status: 404 }
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const result = await foundTool.execute(input);
     
-    return NextResponse.json(result, {
+    return new Response(JSON.stringify(result), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -381,12 +381,12 @@ export async function POST(req: NextRequest) {
   } catch (executionError: any) {
     console.error('Tool execution error:', executionError);
     
-    return NextResponse.json(
-      { 
+    return new Response(
+      JSON.stringify({ 
         error: executionError?.message || "Tool execution failed",
         timestamp: new Date().toISOString()
-      },
-      { status: 500 }
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

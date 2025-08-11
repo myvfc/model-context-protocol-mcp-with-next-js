@@ -1,7 +1,7 @@
 // app/[transport]/route.ts
 // Self-contained MCP-style route for Cheer Pal on Vercel (no external imports)
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 type Tool = {
   name: string;
@@ -17,7 +17,12 @@ const tools: Tool[] = [
     description: "Checks if a user has an active subscription (stub for now).",
     inputSchema: {
       type: "object",
-      properties: { user_id: { type: "string", description: "email or app user id" } },
+      properties: { 
+        user_id: { 
+          type: "string", 
+          description: "email or app user id" 
+        } 
+      },
       required: ["user_id"]
     },
     execute: async (input) => {
@@ -41,19 +46,51 @@ const tools: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        age_band: { type: "string", examples: ["5-7","8-11","12-14","15-18"] },
-        level: { type: "string", examples: ["1","2","3","4"] },
-        minutes: { type: "number", minimum: 5, maximum: 60 }
+        age_band: { 
+          type: "string", 
+          enum: ["5-7", "8-11", "12-14", "15-18"],
+          description: "Age band for the cheerleader"
+        },
+        level: { 
+          type: "string", 
+          enum: ["1", "2", "3", "4"],
+          description: "Skill level (1=beginner, 4=advanced)"
+        },
+        minutes: { 
+          type: "number", 
+          minimum: 5, 
+          maximum: 60,
+          description: "Duration of practice in minutes"
+        }
       },
-      required: ["age_band","level","minutes"]
+      required: ["age_band", "level", "minutes"]
     },
     execute: async (input) => {
       const { age_band, level, minutes } = input;
-      const warmup = ["Light jog 2 min","Arm circles x20","Neck rolls x10"];
-      const skills = String(level) === "1"
-        ? ["Toe touch drills x10","High V / Low V x10","Clap & clean x10"]
-        : ["Jumps combo x12","T motions x12","Core holds 30s x3"];
-      const cooldown = ["Hamstring stretch 30s x2","Quad stretch 30s x2","Deep breaths 1 min"];
+      
+      // Input validation
+      if (!["5-7", "8-11", "12-14", "15-18"].includes(age_band)) {
+        throw new Error("Invalid age_band. Must be one of: 5-7, 8-11, 12-14, 15-18");
+      }
+      if (!["1", "2", "3", "4"].includes(level)) {
+        throw new Error("Invalid level. Must be one of: 1, 2, 3, 4");
+      }
+      if (minutes < 5 || minutes > 60) {
+        throw new Error("Minutes must be between 5 and 60");
+      }
+
+      const warmup = ["Light jog 2 min", "Arm circles x20", "Neck rolls x10"];
+      
+      const skills = level === "1"
+        ? ["Toe touch drills x10", "High V / Low V x10", "Clap & clean x10"]
+        : level === "2"
+        ? ["Jumps combo x12", "T motions x12", "Core holds 30s x3"]
+        : level === "3"
+        ? ["Pike jumps x15", "Herkie practice x10", "Tumbling drills x8"]
+        : ["Advanced stunts x10", "Full routine run x2", "Performance polish x15"];
+
+      const cooldown = ["Hamstring stretch 30s x2", "Quad stretch 30s x2", "Deep breaths 1 min"];
+      
       return {
         content: [{
           type: "json",
@@ -76,18 +113,44 @@ const tools: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        role: { type: "string", examples: ["cheerleader","mom"] },
-        age_band: { type: "string", examples: ["5-7","8-11","12-14","15-18"] },
-        topic: { type: "string", examples: ["toe-touch","stretching","competition-prep"] }
+        role: { 
+          type: "string", 
+          enum: ["cheerleader", "mom", "coach"],
+          description: "User role"
+        },
+        age_band: { 
+          type: "string", 
+          enum: ["5-7", "8-11", "12-14", "15-18"],
+          description: "Age band"
+        },
+        topic: { 
+          type: "string", 
+          enum: ["toe-touch", "stretching", "competition-prep"],
+          description: "Media topic"
+        }
       },
-      required: ["role","age_band","topic"]
+      required: ["role", "age_band", "topic"]
     },
-    execute: async () => {
+    execute: async (input) => {
+      const { role, age_band, topic } = input;
+      
+      // Input validation
+      if (!["cheerleader", "mom", "coach"].includes(role)) {
+        throw new Error("Invalid role. Must be one of: cheerleader, mom, coach");
+      }
+      if (!["5-7", "8-11", "12-14", "15-18"].includes(age_band)) {
+        throw new Error("Invalid age_band. Must be one of: 5-7, 8-11, 12-14, 15-18");
+      }
+      if (!["toe-touch", "stretching", "competition-prep"].includes(topic)) {
+        throw new Error("Invalid topic. Must be one of: toe-touch, stretching, competition-prep");
+      }
+
       const base = process.env.PUBLIC_BASE_MEDIA_URL || "https://example.com";
       // Known-good, embeddable YouTube demo video:
       const TEST_VIDEO_ID = "M7lc1UVf-VE";
       const embed_url = `https://www.youtube.com/embed/${TEST_VIDEO_ID}`;
       const watch_url = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
+      
       return {
         content: [{
           type: "json",
@@ -96,22 +159,22 @@ const tools: Tool[] = [
               {
                 id: `yt_${TEST_VIDEO_ID}`,
                 type: "video",
-                title: "Toe Touch (Demo Video)",
+                title: `${topic.charAt(0).toUpperCase() + topic.slice(1)} (Demo Video)`,
                 embed_url,
                 watch_url,
                 duration_sec: 18
               },
               {
-                id: "pdf_checklist_01",
+                id: `pdf_checklist_${topic}`,
                 type: "pdf",
-                title: "Toe Touch Checklist",
-                url: `${base}/docs/toe_touch_checklist.pdf`
+                title: `${topic.charAt(0).toUpperCase() + topic.slice(1)} Checklist`,
+                url: `${base}/docs/${topic}_checklist.pdf`
               },
               {
-                id: "img_form_cues_01",
+                id: `img_form_cues_${topic}`,
                 type: "image",
                 title: "Form Cues",
-                url: `${base}/images/form_cues.png`
+                url: `${base}/images/${topic}_form_cues.png`
               }
             ]
           }
@@ -124,12 +187,49 @@ const tools: Tool[] = [
     description: "Lists media topics available by role and age band.",
     inputSchema: {
       type: "object",
-      properties: { role: { type: "string" }, age_band: { type: "string" } },
-      required: ["role","age_band"]
+      properties: { 
+        role: { 
+          type: "string",
+          enum: ["cheerleader", "mom", "coach"],
+          description: "User role"
+        }, 
+        age_band: { 
+          type: "string",
+          enum: ["5-7", "8-11", "12-14", "15-18"],
+          description: "Age band"
+        } 
+      },
+      required: ["role", "age_band"]
     },
-    execute: async () => ({
-      content: [{ type: "json", json: { topics: ["toe-touch","stretching","competition-prep"] } }]
-    })
+    execute: async (input) => {
+      const { role, age_band } = input;
+      
+      // Input validation
+      if (!["cheerleader", "mom", "coach"].includes(role)) {
+        throw new Error("Invalid role. Must be one of: cheerleader, mom, coach");
+      }
+      if (!["5-7", "8-11", "12-14", "15-18"].includes(age_band)) {
+        throw new Error("Invalid age_band. Must be one of: 5-7, 8-11, 12-14, 15-18");
+      }
+
+      // Different topics based on role and age
+      const topics = role === "mom" 
+        ? ["nutrition", "injury-prevention", "mental-health"]
+        : age_band === "5-7"
+        ? ["basic-jumps", "simple-motions", "team-building"]
+        : ["toe-touch", "stretching", "competition-prep"];
+
+      return {
+        content: [{ 
+          type: "json", 
+          json: { 
+            topics,
+            role,
+            age_band
+          } 
+        }]
+      };
+    }
   },
   {
     name: "log_progress",
@@ -137,18 +237,51 @@ const tools: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        user_id: { type: "string" },
-        skill: { type: "string" },
-        outcome: { type: "string", examples: ["completed","partial","skipped"] }
+        user_id: { 
+          type: "string",
+          description: "User identifier"
+        },
+        skill: { 
+          type: "string",
+          description: "Name of the skill practiced"
+        },
+        outcome: { 
+          type: "string", 
+          enum: ["completed", "partial", "skipped"],
+          description: "Result of the practice session"
+        }
       },
-      required: ["user_id","skill","outcome"]
+      required: ["user_id", "skill", "outcome"]
     },
     execute: async (input) => {
-      const earned = input.outcome === "completed";
+      const { user_id, skill, outcome } = input;
+      
+      // Input validation
+      if (!user_id || typeof user_id !== 'string') {
+        throw new Error("user_id is required and must be a string");
+      }
+      if (!skill || typeof skill !== 'string') {
+        throw new Error("skill is required and must be a string");
+      }
+      if (!["completed", "partial", "skipped"].includes(outcome)) {
+        throw new Error("Invalid outcome. Must be one of: completed, partial, skipped");
+      }
+
+      const earned = outcome === "completed";
+      const streakDays = earned ? Math.floor(Math.random() * 7) + 1 : 0; // Random streak for demo
+      
       return {
         content: [{
           type: "json",
-          json: { ok: true, streak_days: earned ? 1 : 0, earned_badge: earned ? "Toe-Touch-Novice" : null }
+          json: { 
+            success: true,
+            user_id,
+            skill,
+            outcome,
+            streak_days: streakDays,
+            earned_badge: earned ? `${skill.replace(/\s+/g, '-')}-Novice` : null,
+            timestamp: new Date().toISOString()
+          }
         }]
       };
     }
@@ -159,48 +292,101 @@ const tools: Tool[] = [
 
 // Discovery: return tool list (some clients call GET to discover tools)
 export async function GET() {
-  return new Response(
-    JSON.stringify({
+  try {
+    const response = {
       name: "Cheer Pal MCP Server",
+      version: "1.0.0",
+      description: "MCP server for cheerleading practice plans and media",
       tools: tools.map(t => ({
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema
       }))
-    }),
-    { status: 200, headers: { "content-type": "application/json" } }
-  );
+    };
+
+    return NextResponse.json(response, { 
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to retrieve tools list" },
+      { status: 500 }
+    );
+  }
+}
+
+// Handle OPTIONS requests for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
 
 // Execution: expects JSON body { tool: string, input: any }
 export async function POST(req: NextRequest) {
-  let body: any = {};
-  try { body = await req.json(); } catch { /* ignore */ }
-
-  const toolName = body?.tool;
-  const input = body?.input ?? {};
-
-  if (!toolName) {
-    return new Response(JSON.stringify({ error: "Missing 'tool' in body" }), {
-      status: 400, headers: { "content-type": "application/json" }
-    });
-  }
-
-  const found = tools.find(t => t.name === toolName);
-  if (!found) {
-    return new Response(JSON.stringify({ error: `Tool not found: ${toolName}` }), {
-      status: 404, headers: { "content-type": "application/json" }
-    });
-  }
-
   try {
-    const result = await found.execute(input);
-    return new Response(JSON.stringify(result), {
-      status: 200, headers: { "content-type": "application/json" }
+    let body: any = {};
+    
+    try { 
+      body = await req.json(); 
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
+    const toolName = body?.tool;
+    const input = body?.input ?? {};
+
+    if (!toolName || typeof toolName !== 'string') {
+      return NextResponse.json(
+        { error: "Missing or invalid 'tool' field in request body" },
+        { status: 400 }
+      );
+    }
+
+    const foundTool = tools.find(t => t.name === toolName);
+    if (!foundTool) {
+      return NextResponse.json(
+        { 
+          error: `Tool not found: ${toolName}`,
+          available_tools: tools.map(t => t.name)
+        },
+        { status: 404 }
+      );
+    }
+
+    const result = await foundTool.execute(input);
+    
+    return NextResponse.json(result, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || "Tool execution failed" }), {
-      status: 500, headers: { "content-type": "application/json" }
-    });
+
+  } catch (executionError: any) {
+    console.error('Tool execution error:', executionError);
+    
+    return NextResponse.json(
+      { 
+        error: executionError?.message || "Tool execution failed",
+        timestamp: new Date().toISOString()
+      },
+      { status: 500 }
+    );
   }
 }

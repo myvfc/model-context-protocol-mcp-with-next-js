@@ -1,84 +1,170 @@
-import { createMcpHandler } from "mcp-handler";
-import { z } from "zod";
+// --- MCP route handler (server.tool variant) ---
+// If your original file imported a helper to create the server, keep that.
+// This assumes your template exposes a `createServer()` that returns { handlers(), tool() }.
+import { createServer } from "@/lib/mcp-server"; // If this import fails, use your template's original import.
 
-const handler = createMcpHandler(
-  async (server) => {
-    // Health check
-    server.tool(
-      "echo",
-      "description",
-      { message: z.string() },
-      async ({ message }) => ({
-        content: [{ type: "text", text: `Tool echo: ${message}` }],
-      })
-    );
+const server = createServer();
 
-    // Extremely forgiving media tool: all params optional with defaults
-    server.tool(
-      "get_media",
-      "Returns cheer practice media links (forgiving inputs).",
-      {
-        role: z.string().optional(),       // cheerleader | mom
-        age_band: z.string().optional(),   // e.g., 5-7, 8-11, 12-14, 15-18
-        topic: z.string().optional(),      // e.g., toe-touch, warm-up
-      },
-      async ({ role, age_band, topic }) => {
-        const r = (role?.trim().toLowerCase() || "cheerleader");
-        const a = (age_band?.trim() || "12-14");
-        const t = (topic?.trim().toLowerCase() || "toe-touch");
-
-        // You can branch here later by role/age/topic. For now, always return working links.
-        const videoUrl = "https://filesamples.com/samples/video/mp4/sample_640x360.mp4";
-        const pdfUrl   = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
-
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                `Media for role=${r}, age_band=${a}, topic=${t}\n\n` +
-                `Video: ${videoUrl}\n` +
-                `PDF:   ${pdfUrl}\n` +
-                `\n(If you need a different age or topic, just say it. I accept natural prompts.)`
-            }
-          ]
-        };
-      }
-    );
-
-    // Zero-input helper for quick sanity checks
-    server.tool(
-      "media_quick",
-      "Returns a toe-touch sample without needing inputs.",
-      {},
-      async () => ({
-        content: [
-          {
-            type: "text",
-            text:
-              "Quick media sample:\n" +
-              "Video: https://filesamples.com/samples/video/mp4/sample_640x360.mp4\n" +
-              "PDF:   https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-          }
-        ]
-      })
-    );
-  },
+/** check_subscription (stub) */
+server.tool(
+  "check_subscription",
+  "Checks if a user has an active subscription (stub for now).",
   {
-    // Declare tools so clients can discover them
-    capabilities: {
-      tools: {
-        echo:        { description: "Echo a message" },
-        get_media:   { description: "Returns cheer practice media links (forgiving inputs)." },
-        media_quick: { description: "Returns a toe-touch sample without needing inputs." }
-      },
-    },
+    type: "object",
+    properties: { user_id: { type: "string", description: "email or app user id" } },
+    required: ["user_id"]
   },
-  {
-    basePath: "",
-    verboseLogs: true,
-    maxDuration: 60,
+  async (input) => {
+    const renewsOn = new Date();
+    renewsOn.setMonth(renewsOn.getMonth() + 1);
+    return {
+      content: [{
+        type: "json",
+        json: {
+          active: true,
+          plan: "Pro-Monthly",
+          renews_on: renewsOn.toISOString().slice(0, 10)
+        }
+      }]
+    };
   }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+/** get_practice_plan */
+server.tool(
+  "get_practice_plan",
+  "Returns a practice plan by age band, level, and time.",
+  {
+    type: "object",
+    properties: {
+      age_band: { type: "string", examples: ["5-7","8-11","12-14","15-18"] },
+      level: { type: "string", examples: ["1","2","3","4"] },
+      minutes: { type: "number", minimum: 5, maximum: 60 }
+    },
+    required: ["age_band","level","minutes"]
+  },
+  async (input) => {
+    const { age_band, level, minutes } = input as any;
+
+    const warmup = ["Light jog 2 min","Arm circles x20","Neck rolls x10"];
+    const skills = level === "1"
+      ? ["Toe touch drills x10","High V / Low V x10","Clap & clean x10"]
+      : ["Jumps combo x12","T motions x12","Core holds 30s x3"];
+    const cooldown = ["Hamstring stretch 30s x2","Quad stretch 30s x2","Deep breaths 1 min"];
+
+    return {
+      content: [{
+        type: "json",
+        json: {
+          title: `Level ${level} — ${minutes} min plan (ages ${age_band})`,
+          sections: [
+            { name: "Warm-up", items: warmup },
+            { name: "Skills", items: skills },
+            { name: "Cool-down", items: cooldown }
+          ],
+          badges: ["Consistency-Star"]
+        }
+      }]
+    };
+  }
+);
+
+/** get_media */
+server.tool(
+  "get_media",
+  "Return video/PDF/image links for a topic and age-band.",
+  {
+    type: "object",
+    properties: {
+      role: { type: "string", examples: ["cheerleader","mom"] },
+      age_band: { type: "string", examples: ["5-7","8-11","12-14","15-18"] },
+      topic: { type: "string", examples: ["toe-touch","stretching","competition-prep"] }
+    },
+    required: ["role","age_band","topic"]
+  },
+  async (_input) => {
+    const base = process.env.PUBLIC_BASE_MEDIA_URL || "https://example.com";
+
+    const TEST_VIDEO_ID = "M7lc1UVf-VE";
+    const embed_url = `https://www.youtube.com/embed/${TEST_VIDEO_ID}`;
+    const watch_url = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
+
+    return {
+      content: [{
+        type: "json",
+        json: {
+          items: [
+            {
+              id: `yt_${TEST_VIDEO_ID}`,
+              type: "video",
+              title: "Toe Touch (Demo Video)",
+              embed_url,
+              watch_url,
+              duration_sec: 18
+            },
+            {
+              id: "pdf_checklist_01",
+              type: "pdf",
+              title: "Toe Touch Checklist",
+              url: `${base}/docs/toe_touch_checklist.pdf`
+            },
+            {
+              id: "img_form_cues_01",
+              type: "image",
+              title: "Form Cues",
+              url: `${base}/images/form_cues.png`
+            }
+          ]
+        }
+      }]
+    };
+  }
+);
+
+/** list_media */
+server.tool(
+  "list_media",
+  "Lists media topics available by role and age band.",
+  {
+    type: "object",
+    properties: { role: { type: "string" }, age_band: { type: "string" } },
+    required: ["role","age_band"]
+  },
+  async () => {
+    return {
+      content: [{
+        type: "json",
+        json: { topics: ["toe-touch","stretching","competition-prep"] }
+      }]
+    };
+  }
+);
+
+/** log_progress (stub) */
+server.tool(
+  "log_progress",
+  "Logs a skill completion (stub).",
+  {
+    type: "object",
+    properties: {
+      user_id: { type: "string" },
+      skill: { type: "string" },
+      outcome: { type: "string", examples: ["completed","partial","skipped"] }
+    },
+    required: ["user_id","skill","outcome"]
+  },
+  async (input) => {
+    const earned = input.outcome === "completed";
+    const streak_days = earned ? 1 : 0;
+    const earned_badge = earned ? "Toe-Touch-Novice" : null;
+
+    return {
+      content: [{
+        type: "json",
+        json: { ok: true, streak_days, earned_badge }
+      }]
+    };
+  }
+);
+
+export const { GET, POST } = server.handlers();
